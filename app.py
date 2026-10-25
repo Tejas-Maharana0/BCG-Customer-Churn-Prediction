@@ -60,7 +60,7 @@ if uploaded_file is not None:
             st.stop()
 
         try:
-            response = requests.get(f"{API_URL}/features", timeout=10)
+            response = requests.get(f"{API_URL}/features", timeout=60)
             response.raise_for_status()
             required_features = response.json()["features"]
 
