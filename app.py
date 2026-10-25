@@ -7,7 +7,7 @@ import os
 
 
 BASE_DIR = Path(__file__).resolve().parent
-API_URL = os.getenv("API_URL", "http://127.0.0.1:8000").rstrip("/")
+API_URL = (st.secrets.get("API_URL") or os.getenv("API_URL") or "http://127.0.0.1:8000").rstrip("/")
 
 st.set_page_config(
     page_title="Customer Churn Prediction | BCG",
