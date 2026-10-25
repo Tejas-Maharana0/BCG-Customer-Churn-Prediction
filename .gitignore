@@ -9,3 +9,6 @@ __pycache__/
 
 # Trained model artifacts (large files)
 models/*.joblib
+
+# Local backups
+app.py.backup

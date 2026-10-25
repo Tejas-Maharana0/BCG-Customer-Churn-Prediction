@@ -74,19 +74,46 @@ if uploaded_file is not None:
                     st.write(missing)
                 st.stop()
 
-            payload = {
-                "records": data[required_features]
-                .where(pd.notna(data[required_features]), None)
-                .to_dict(orient="records")
-            }
+            # Process the CSV in smaller batches to avoid large-request failures.
+            batch_size = 500
+            results = []
+            total_rows = len(data)
+            progress_bar = st.progress(0, text="Preparing predictions...")
+            status_text = st.empty()
 
-            prediction_response = requests.post(
-                f"{API_URL}/predict",
-                json=payload,
-                timeout=120,
+            for start in range(0, total_rows, batch_size):
+                end = min(start + batch_size, total_rows)
+                batch = data.iloc[start:end][required_features]
+                batch = batch.astype(object).where(pd.notna(batch), None)
+                payload = {"records": batch.to_dict(orient="records")}
+
+                status_text.info(
+                    f"Predicting rows {start + 1:,}–{end:,} of {total_rows:,}..."
+                )
+
+                prediction_response = requests.post(
+                    f"{API_URL}/predict",
+                    json=payload,
+                    timeout=90,
+                )
+                prediction_response.raise_for_status()
+                batch_results = prediction_response.json()["predictions"]
+
+                if len(batch_results) != len(batch):
+                    raise ValueError(
+                        f"Backend returned {len(batch_results)} predictions "
+                        f"for {len(batch)} input rows."
+                    )
+
+                results.extend(batch_results)
+                progress_bar.progress(
+                    min(end / total_rows, 1.0),
+                    text=f"Processed {end:,} of {total_rows:,} rows",
+                )
+
+            status_text.success(
+                f"Successfully generated predictions for {len(results):,} rows."
             )
-            prediction_response.raise_for_status()
-            results = prediction_response.json()["predictions"]
 
             result_df = data.copy()
             result_df["Predicted_Churn"] = [
